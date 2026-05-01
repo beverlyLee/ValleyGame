@@ -37,6 +37,7 @@ class FarmScene extends Phaser.Scene {
 
   private highlightedTile: { row: number; col: number } | null = null;
   private highlightRectangle!: Phaser.GameObjects.Rectangle;
+  private farmGridBorder!: Phaser.GameObjects.Rectangle;
 
   private seedsText!: Phaser.GameObjects.Text;
   private cropsText!: Phaser.GameObjects.Text;
@@ -92,12 +93,8 @@ class FarmScene extends Phaser.Scene {
 
         const isEdge = row === 0 || row === this.MAP_HEIGHT - 1 || 
                        col === 0 || col === this.MAP_WIDTH - 1;
-        
-        const isObstacle = (row >= 10 && row <= 15 && col >= 20 && col <= 25) ||
-                           (row >= 30 && row <= 35 && col >= 10 && col <= 15) ||
-                           (row >= 20 && row <= 22 && col >= 35 && col <= 40);
 
-        if (isEdge || isObstacle) {
+        if (isEdge) {
           const collisionTile = this.physics.add.staticImage(x, y, 'rock');
           this.collisionLayer.add(collisionTile);
         }
@@ -162,6 +159,17 @@ class FarmScene extends Phaser.Scene {
 
     this.gridOffsetX = gridCenterX - gridWidth / 2;
     this.gridOffsetY = gridCenterY - gridHeight / 2;
+
+    this.farmGridBorder = this.add.rectangle(
+      this.gridOffsetX + gridWidth / 2,
+      this.gridOffsetY + gridHeight / 2,
+      gridWidth,
+      gridHeight,
+      0x000000,
+      0
+    );
+    this.farmGridBorder.setStrokeStyle(4, 0x8B4513, 1);
+    this.farmGridBorder.setDepth(0);
 
     this.farmGrid = [];
     for (let row = 0; row < 5; row++) {
@@ -231,9 +239,6 @@ class FarmScene extends Phaser.Scene {
     let closestDist = Infinity;
     let closestTile: { row: number; col: number } | null = null;
 
-    console.log('--- 检测最近瓦片 ---');
-    console.log('玩家位置:', playerX, playerY);
-
     for (let row = 0; row < 5; row++) {
       for (let col = 0; col < 5; col++) {
         const tilePos = this.getTileWorldPosition(row, col);
@@ -242,19 +247,12 @@ class FarmScene extends Phaser.Scene {
           tilePos.x, tilePos.y
         );
 
-        if (distance < this.TILE_SIZE) {
-          console.log(`瓦片 (${row}, ${col}): 距离=${distance.toFixed(2)}`);
-          if (distance < closestDist) {
-            closestDist = distance;
-            closestTile = { row, col };
-            console.log(`  -> 成为当前最近瓦片`);
-          }
+        if (distance < this.TILE_SIZE && distance < closestDist) {
+          closestDist = distance;
+          closestTile = { row, col };
         }
       }
     }
-
-    console.log('最终最近瓦片:', closestTile);
-    console.log('--- 检测结束 ---');
 
     return closestTile;
   }
