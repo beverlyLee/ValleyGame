@@ -11,10 +11,86 @@ class BootScene extends Phaser.Scene {
     super({ key: 'BootScene' });
   }
 
+  private generateTextures(): void {
+    const graphics = this.add.graphics();
+
+    graphics.fillStyle(0x90EE90, 1);
+    graphics.fillRect(0, 0, 64, 64);
+    graphics.fillStyle(0x7CCD7C, 1);
+    for (let i = 0; i < 10; i++) {
+      const x = Math.random() * 50 + 7;
+      const y = Math.random() * 50 + 7;
+      graphics.fillCircle(x, y, 2);
+    }
+    graphics.generateTexture('grass', 64, 64);
+    graphics.clear();
+
+    graphics.fillStyle(0x696969, 1);
+    graphics.fillRect(0, 0, 64, 64);
+    graphics.fillStyle(0x808080, 1);
+    for (let i = 0; i < 15; i++) {
+      const x = Math.random() * 50 + 7;
+      const y = Math.random() * 50 + 7;
+      const size = Math.random() * 5 + 2;
+      graphics.fillCircle(x, y, size);
+    }
+    graphics.generateTexture('rock', 64, 64);
+    graphics.clear();
+
+    graphics.fillStyle(0x8B4513, 1);
+    graphics.fillRect(0, 0, 64, 64);
+    graphics.fillStyle(0x654321, 1);
+    for (let i = 0; i < 8; i++) {
+      const x = Math.random() * 50 + 7;
+      const y = Math.random() * 50 + 7;
+      graphics.fillCircle(x, y, 3);
+    }
+    graphics.generateTexture('tilled', 64, 64);
+    graphics.clear();
+
+    graphics.fillStyle(0x006400, 1);
+    graphics.fillCircle(32, 32, 20);
+    graphics.fillStyle(0x228B22, 1);
+    graphics.fillCircle(32, 28, 16);
+    graphics.fillStyle(0x32CD32, 1);
+    graphics.fillCircle(32, 24, 12);
+    graphics.generateTexture('crop', 64, 64);
+    graphics.clear();
+
+    graphics.fillStyle(0xFFD700, 1);
+    graphics.fillCircle(32, 32, 20);
+    graphics.fillStyle(0xFFA500, 1);
+    graphics.fillCircle(32, 28, 16);
+    graphics.fillStyle(0xFF8C00, 1);
+    graphics.fillCircle(32, 24, 12);
+    graphics.generateTexture('crop_grown', 64, 64);
+    graphics.clear();
+
+    graphics.fillStyle(0x4169E1, 1);
+    graphics.fillRect(8, 20, 24, 28);
+    graphics.fillStyle(0x6495ED, 1);
+    graphics.fillRect(10, 22, 20, 24);
+    graphics.fillStyle(0xFFE4C4, 1);
+    graphics.fillCircle(20, 12, 12);
+    graphics.fillStyle(0x8B4513, 1);
+    graphics.fillRect(8, 2, 24, 8);
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillCircle(15, 10, 2);
+    graphics.fillCircle(25, 10, 2);
+    graphics.fillStyle(0xFF69B4, 1);
+    graphics.fillCircle(20, 15, 2);
+    graphics.generateTexture('player', 40, 48);
+    graphics.clear();
+
+    graphics.destroy();
+  }
+
   preload(): void {
     this.createProgressBar();
 
     this.load.image('placeholder', 'assets/placeholder.png');
+    
+    this.generateTextures();
 
     this.load.on('progress', (value: number) => {
       this.updateProgressBar(value);

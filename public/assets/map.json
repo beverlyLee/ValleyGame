@@ -1,0 +1,22 @@
+{
+  "width": 50,
+  "height": 50,
+  "tilewidth": 64,
+  "tileheight": 64,
+  "layers": [
+    {
+      "name": "ground",
+      "type": "tilelayer",
+      "width": 50,
+      "height": 50,
+      "data": []
+    },
+    {
+      "name": "collision",
+      "type": "tilelayer",
+      "width": 50,
+      "height": 50,
+      "data": []
+    }
+  ]
+}

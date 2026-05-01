@@ -5,7 +5,8 @@ type TileState = 'empty' | 'tilled' | 'planted' | 'grown';
 
 interface FarmTile {
   state: TileState;
-  sprite: Phaser.GameObjects.Rectangle | null;
+  sprite: Phaser.GameObjects.Image | null;
+  cropSprite: Phaser.GameObjects.Image | null;
   plantedTime: number;
 }
 
@@ -22,9 +23,13 @@ class FarmScene extends Phaser.Scene {
   private spaceKey!: Phaser.Input.Keyboard.Key;
   private eKey!: Phaser.Input.Keyboard.Key;
 
-  private readonly GRID_SIZE = 5;
+  private readonly MAP_WIDTH = 50;
+  private readonly MAP_HEIGHT = 50;
   private readonly TILE_SIZE = 64;
   private readonly GROW_TIME = 5000;
+
+  private groundLayer!: Phaser.GameObjects.Group;
+  private collisionLayer!: Phaser.Physics.Arcade.StaticGroup;
 
   private farmGrid: FarmTile[][] = [];
   private gridOffsetX = 0;
@@ -44,16 +49,13 @@ class FarmScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0xffffff, 1);
-    graphics.fillRect(0, 0, 40, 40);
-    graphics.generateTexture('player', 40, 40);
-    graphics.destroy();
+    // 纹理已经在 BootScene 中生成
   }
 
   create(): void {
-    this.addWelcomeText();
+    this.createMap();
     this.createPlayer();
+    this.setupCamera();
     this.setupInput();
     this.setupCollisions();
     this.setupSpaceKey();
@@ -67,30 +69,65 @@ class FarmScene extends Phaser.Scene {
     this.handlePlayerMovement();
     this.updatePlayerAnimation();
     this.handleSpaceKey();
-    this.handleEKey();
     this.updateHighlightedTile();
+    this.handleEKey();
     this.updateGrowth();
     this.updateUI();
   }
 
-  private addWelcomeText(): void {
-    const width = this.cameras.main.width;
+  private createMap(): void {
+    const worldWidth = this.MAP_WIDTH * this.TILE_SIZE;
+    const worldHeight = this.MAP_HEIGHT * this.TILE_SIZE;
 
-    this.add.text(width / 2, 50, 'Web Valley', {
-      fontSize: '48px',
-      color: '#333333',
-      fontFamily: 'Arial, sans-serif'
-    }).setOrigin(0.5);
+    this.groundLayer = this.add.group();
+    this.collisionLayer = this.physics.add.staticGroup();
+
+    for (let row = 0; row < this.MAP_HEIGHT; row++) {
+      for (let col = 0; col < this.MAP_WIDTH; col++) {
+        const x = col * this.TILE_SIZE + this.TILE_SIZE / 2;
+        const y = row * this.TILE_SIZE + this.TILE_SIZE / 2;
+
+        const groundTile = this.add.image(x, y, 'grass');
+        this.groundLayer.add(groundTile);
+
+        const isEdge = row === 0 || row === this.MAP_HEIGHT - 1 || 
+                       col === 0 || col === this.MAP_WIDTH - 1;
+        
+        const isObstacle = (row >= 10 && row <= 15 && col >= 20 && col <= 25) ||
+                           (row >= 30 && row <= 35 && col >= 10 && col <= 15) ||
+                           (row >= 20 && row <= 22 && col >= 35 && col <= 40);
+
+        if (isEdge || isObstacle) {
+          const collisionTile = this.physics.add.staticImage(x, y, 'rock');
+          this.collisionLayer.add(collisionTile);
+        }
+      }
+    }
+
+    this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
   }
 
   private createPlayer(): void {
-    const centerX = this.cameras.main.width / 2;
-    const centerY = this.cameras.main.height / 2;
+    const startX = this.MAP_WIDTH * this.TILE_SIZE / 2;
+    const startY = this.MAP_HEIGHT * this.TILE_SIZE / 2;
 
-    this.player = this.physics.add.sprite(centerX, centerY, 'player');
-
+    this.player = this.physics.add.sprite(startX, startY, 'player');
     this.player.setOrigin(0.5);
     this.player.setCollideWorldBounds(true);
+    this.player.setScale(1.2);
+    this.player.setDepth(10);
+  }
+
+  private setupCamera(): void {
+    this.cameras.main.setBounds(
+      0, 
+      0, 
+      this.MAP_WIDTH * this.TILE_SIZE, 
+      this.MAP_HEIGHT * this.TILE_SIZE
+    );
+    
+    this.cameras.main.startFollow(this.player, true, 0.05, 0.05);
+    this.cameras.main.setZoom(1);
   }
 
   private setupInput(): void {
@@ -105,12 +142,7 @@ class FarmScene extends Phaser.Scene {
   }
 
   private setupCollisions(): void {
-    this.physics.world.setBounds(
-      0,
-      0,
-      this.cameras.main.width,
-      this.cameras.main.height
-    );
+    this.physics.add.collider(this.player, this.collisionLayer);
   }
 
   private setupSpaceKey(): void {
@@ -122,21 +154,23 @@ class FarmScene extends Phaser.Scene {
   }
 
   private initializeFarmGrid(): void {
-    const screenWidth = this.cameras.main.width;
-    const screenHeight = this.cameras.main.height;
-    const gridWidth = this.GRID_SIZE * this.TILE_SIZE;
-    const gridHeight = this.GRID_SIZE * this.TILE_SIZE;
+    const gridCenterX = this.MAP_WIDTH * this.TILE_SIZE / 2;
+    const gridCenterY = this.MAP_HEIGHT * this.TILE_SIZE / 2;
+    
+    const gridWidth = 5 * this.TILE_SIZE;
+    const gridHeight = 5 * this.TILE_SIZE;
 
-    this.gridOffsetX = (screenWidth - gridWidth) / 2;
-    this.gridOffsetY = (screenHeight - gridHeight) / 2 + 50;
+    this.gridOffsetX = gridCenterX - gridWidth / 2;
+    this.gridOffsetY = gridCenterY - gridHeight / 2;
 
     this.farmGrid = [];
-    for (let row = 0; row < this.GRID_SIZE; row++) {
+    for (let row = 0; row < 5; row++) {
       this.farmGrid[row] = [];
-      for (let col = 0; col < this.GRID_SIZE; col++) {
+      for (let col = 0; col < 5; col++) {
         this.farmGrid[row][col] = {
           state: 'empty',
           sprite: null,
+          cropSprite: null,
           plantedTime: 0
         };
       }
@@ -149,9 +183,9 @@ class FarmScene extends Phaser.Scene {
       this.TILE_SIZE, this.TILE_SIZE,
       0xffff00, 0.3
     );
-    this.highlightRectangle.setStrokeStyle(2, 0xffff00, 0.8);
+    this.highlightRectangle.setStrokeStyle(3, 0xffff00, 0.8);
     this.highlightRectangle.setVisible(false);
-    this.highlightRectangle.setDepth(1);
+    this.highlightRectangle.setDepth(5);
   }
 
   private createUI(): void {
@@ -160,14 +194,21 @@ class FarmScene extends Phaser.Scene {
       color: '#006400',
       fontFamily: 'Arial, sans-serif',
       backgroundColor: '#90EE90'
-    }).setDepth(10);
+    }).setDepth(100).setScrollFactor(0);
 
-    this.cropsText = this.add.text(20, 50, '作物: 0', {
+    this.cropsText = this.add.text(20, 55, '作物: 0', {
       fontSize: '20px',
       color: '#8B4513',
       fontFamily: 'Arial, sans-serif',
       backgroundColor: '#90EE90'
-    }).setDepth(10);
+    }).setDepth(100).setScrollFactor(0);
+
+    const helpText = this.add.text(20, 100, 'WASD/方向键移动 | E键交互 | 空格获得金币', {
+      fontSize: '16px',
+      color: '#333333',
+      fontFamily: 'Arial, sans-serif',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)'
+    }).setDepth(100).setScrollFactor(0);
   }
 
   private updateUI(): void {
@@ -187,8 +228,14 @@ class FarmScene extends Phaser.Scene {
     const playerX = this.player.x;
     const playerY = this.player.y;
 
-    for (let row = 0; row < this.GRID_SIZE; row++) {
-      for (let col = 0; col < this.GRID_SIZE; col++) {
+    let closestDist = Infinity;
+    let closestTile: { row: number; col: number } | null = null;
+
+    console.log('--- 检测最近瓦片 ---');
+    console.log('玩家位置:', playerX, playerY);
+
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
         const tilePos = this.getTileWorldPosition(row, col);
         const distance = Phaser.Math.Distance.Between(
           playerX, playerY,
@@ -196,12 +243,20 @@ class FarmScene extends Phaser.Scene {
         );
 
         if (distance < this.TILE_SIZE) {
-          return { row, col };
+          console.log(`瓦片 (${row}, ${col}): 距离=${distance.toFixed(2)}`);
+          if (distance < closestDist) {
+            closestDist = distance;
+            closestTile = { row, col };
+            console.log(`  -> 成为当前最近瓦片`);
+          }
         }
       }
     }
 
-    return null;
+    console.log('最终最近瓦片:', closestTile);
+    console.log('--- 检测结束 ---');
+
+    return closestTile;
   }
 
   private getClosestGridPosition(): { x: number; y: number } | null {
@@ -211,8 +266,8 @@ class FarmScene extends Phaser.Scene {
     let closestDist = Infinity;
     let closestPos = null;
 
-    for (let row = 0; row < this.GRID_SIZE; row++) {
-      for (let col = 0; col < this.GRID_SIZE; col++) {
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
         const tilePos = this.getTileWorldPosition(row, col);
         const distance = Phaser.Math.Distance.Between(
           playerX, playerY,
@@ -270,40 +325,44 @@ class FarmScene extends Phaser.Scene {
       tile.sprite = null;
     }
 
-    let color = 0x000000;
-    let visible = false;
+    if (tile.cropSprite) {
+      tile.cropSprite.destroy();
+      tile.cropSprite = null;
+    }
 
     switch (tile.state) {
       case 'tilled':
-        color = 0x8B4513;
-        visible = true;
+        tile.sprite = this.add.image(tilePos.x, tilePos.y, 'tilled');
+        tile.sprite.setDepth(1);
         break;
       case 'planted':
-        color = 0x00FF00;
-        visible = true;
+        tile.sprite = this.add.image(tilePos.x, tilePos.y, 'tilled');
+        tile.sprite.setDepth(1);
+        tile.cropSprite = this.add.image(tilePos.x, tilePos.y, 'crop');
+        tile.cropSprite.setScale(0.3);
+        tile.cropSprite.setDepth(2);
         break;
       case 'grown':
-        color = 0xFFFF00;
-        visible = true;
+        tile.sprite = this.add.image(tilePos.x, tilePos.y, 'tilled');
+        tile.sprite.setDepth(1);
+        tile.cropSprite = this.add.image(tilePos.x, tilePos.y, 'crop_grown');
+        tile.cropSprite.setScale(0.6);
+        tile.cropSprite.setDepth(2);
         break;
-    }
-
-    if (visible) {
-      tile.sprite = this.add.rectangle(
-        tilePos.x, tilePos.y,
-        this.TILE_SIZE - 4, this.TILE_SIZE - 4,
-        color, 0.8
-      );
-      tile.sprite.setDepth(0);
     }
   }
 
   private handleEKey(): void {
     if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+      console.log('E键被按下！');
+      console.log('highlightedTile:', this.highlightedTile);
+      
       if (this.highlightedTile) {
         const { row, col } = this.highlightedTile;
         const tile = this.farmGrid[row][col];
         const state = gameStore.getState();
+        
+        console.log('当前瓦片状态:', tile.state);
 
         switch (tile.state) {
           case 'empty':
@@ -332,6 +391,8 @@ class FarmScene extends Phaser.Scene {
             this.updateTileVisual(row, col);
             break;
         }
+      } else {
+        console.log('没有检测到附近的可交互瓦片！请移动到中心的耕地区域。');
       }
     }
   }
@@ -339,8 +400,8 @@ class FarmScene extends Phaser.Scene {
   private updateGrowth(): void {
     const currentTime = this.time.now;
 
-    for (let row = 0; row < this.GRID_SIZE; row++) {
-      for (let col = 0; col < this.GRID_SIZE; col++) {
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
         const tile = this.farmGrid[row][col];
         if (tile.state === 'planted' && tile.plantedTime > 0) {
           if (currentTime - tile.plantedTime >= this.GROW_TIME) {
@@ -401,9 +462,11 @@ class FarmScene extends Phaser.Scene {
     const isMoving = body.velocity.x !== 0 || body.velocity.y !== 0;
 
     if (isMoving) {
-      this.player.setTint(0xff0000);
+      this.player.setTint(0xFFD700);
+      this.player.setScale(1.3);
     } else {
       this.player.clearTint();
+      this.player.setScale(1.2);
     }
   }
 }
