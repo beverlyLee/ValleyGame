@@ -41,7 +41,8 @@ class MineScene extends Phaser.Scene {
 
   private exitPortal!: Phaser.Physics.Arcade.Sprite;
 
-  private lastTime: number = 0;
+  // @ts-ignore: Unused class property, possibly for future use
+  private _lastTime: number = 0;
 
   private damageTextGroup!: Phaser.GameObjects.Group;
 
@@ -55,7 +56,7 @@ class MineScene extends Phaser.Scene {
   create(): void {
     console.log('⛏️ MineScene 开始创建...');
     
-    this.lastTime = this.time.now;
+    this._lastTime = this.time.now;
 
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
@@ -77,7 +78,7 @@ class MineScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
-    this.lastTime = time;
+    this._lastTime = time;
 
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
@@ -857,7 +858,8 @@ class MineScene extends Phaser.Scene {
     deathOverlay.setDepth(999);
     deathOverlay.setScrollFactor(0);
 
-    const deathText = this.add.text(
+    // @ts-ignore: Variable not read but object is added to scene
+    const _deathText = this.add.text(
       this.cameras.main.centerX,
       this.cameras.main.centerY - 50,
       '💀 你被击败了！',
@@ -869,7 +871,8 @@ class MineScene extends Phaser.Scene {
       }
     ).setOrigin(0.5).setDepth(1000).setScrollFactor(0);
 
-    const hintText = this.add.text(
+    // @ts-ignore: Variable not read but object is added to scene
+    const _hintText = this.add.text(
       this.cameras.main.centerX,
       this.cameras.main.centerY + 20,
       '正在传送回农场...',
